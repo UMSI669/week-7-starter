@@ -16,14 +16,28 @@ const firebaseConfig = {
   measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Guard against creating a second app during Expo Fast Refresh.
-const isFirstInit = getApps().length === 0;
-export const app = isFirstInit ? initializeApp(firebaseConfig) : getApp();
+// If .env is missing or empty, Firebase throws auth/invalid-api-key on startup.
+// App.js checks this flag and shows setup instructions instead of crashing.
+export const isFirebaseConfigured = Boolean(
+  firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId,
+);
 
-// AsyncStorage persistence keeps the user signed in after the app is closed.
-// initializeAuth can only be called once, so reuse the instance on reloads.
-export const auth = isFirstInit
-  ? initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) })
-  : getAuth(app);
+let app = null;
+let auth = null;
+let db = null;
 
-export const db = getFirestore(app);
+if (isFirebaseConfigured) {
+  // Guard against creating a second app during Expo Fast Refresh.
+  const isFirstInit = getApps().length === 0;
+  app = isFirstInit ? initializeApp(firebaseConfig) : getApp();
+
+  // AsyncStorage persistence keeps the user signed in after the app is closed.
+  // initializeAuth can only be called once, so reuse the instance on reloads.
+  auth = isFirstInit
+    ? initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) })
+    : getAuth(app);
+
+  db = getFirestore(app);
+}
+
+export { app, auth, db };
