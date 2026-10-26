@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import AuthGate from './components/AuthGate';
 import {
   Pressable,
   SafeAreaView,
@@ -50,6 +51,7 @@ export default function App() {
           <Text style={styles.subtitle}>One place to see what your group is working on.</Text>
         </View>
 
+        <AuthGate>
         <View style={styles.notice}>
           <Text style={styles.noticeTitle}>Demo board</Text>
           <Text style={styles.noticeText}>Tasks added here are a preview and reset when the app restarts.</Text>
@@ -110,6 +112,7 @@ export default function App() {
             </Pressable>
           ))}
         </View>
+        </AuthGate>
       </ScrollView>
     </SafeAreaView>
   );
