@@ -111,9 +111,11 @@ EXPO_PUBLIC_FIREBASE_PROJECT_ID=         # projectId
 EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=     # storageBucket
 EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID= # messagingSenderId
 EXPO_PUBLIC_FIREBASE_APP_ID=             # appId
+EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID=      # measurementId
 ```
 
 `.env` is listed in `.gitignore`, so it is not committed. You can find the config again later under **Project settings → General → Your apps**.
+The measurement ID is kept in the config, but this Expo Go app does not initialize Firebase Analytics.
 
 ### 4. Enable Email/Password Authentication
 
