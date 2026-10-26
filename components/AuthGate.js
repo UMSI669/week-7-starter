@@ -60,7 +60,7 @@ export default function AuthGate({ children }) {
             <Text style={styles.buttonText}>{busy ? 'Please wait…' : 'Sign out'}</Text>
           </Pressable>
         </View>
-        {children}
+        {typeof children === 'function' ? children(user) : children}
       </>
     );
   }

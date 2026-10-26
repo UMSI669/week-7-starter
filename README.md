@@ -28,14 +28,39 @@ provides signup, signin, signout, and the authentication observer.
 `components/AuthGate.js` displays loading and error states, shows the board after
 signin, clears the password after successful actions, and cleans up the observer.
 
-## Database and realtime integration status
+## Database and realtime updates
 
-The board currently uses local demo tasks; task writes are not yet saved to
-Firestore. The agreed collection is `tasks`, with `title` (string), `completed`
+Tasks are saved in the `tasks` collection, with `title` (string), `completed`
 (boolean), `authorId` (UID), and `createdAt` (server timestamp).
+`firebase/taskService.js` creates tasks and updates their completion status.
 `firebase/realtimeService.js` provides `subscribeToTasks(onTasks, onError)`,
-preserves document IDs, and returns the listener cleanup function. Connecting it
-to the board and integrating the team's task writes are still pending.
+preserves Firestore IDs, sorts by creation time, and returns listener cleanup.
+`components/TaskBoard.js` subscribes after signin and updates the list and counts
+from snapshots, including changes from other clients. Signout unmounts the board,
+stops the listener, and clears its task state. Failed writes preserve the draft;
+loading, empty, error, and retry states are shown in the board.
+
+All task documents must include `createdAt` to appear in the ordered query.
+
+## Publish Firestore rules
+
+In Firebase Console > Firestore > Rules, paste `firestore.rules` and click Publish.
+This file is not deployed by committing or pushing it to GitHub. The rules allow
+signed-in users to read tasks, create tasks using their own UID, and change any
+shared task's completion status. Changes to author, title, and creation time are
+not allowed. Deletion is not part of this prototype. These are prototype rules
+for one shared board, not a system for separating multiple private groups.
+
+## Manual database and realtime checks
+
+1. Open two independent sessions (for example a normal and a private browser
+   window) and sign into different accounts using the same Firebase project.
+2. Add a task in session A. It should appear in B without refreshing, with the
+   same title and completion status.
+3. Complete the task in B. Both clients' checkbox and counts should update.
+4. Refresh A and confirm the task persists.
+5. Sign out and confirm the board is hidden. Sign in again and confirm tasks load.
+6. Check the tasks collection in Firebase Console for the four agreed fields.
 
 ## Manual authentication checks
 
