@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /questions/{questionId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.authorId == request.auth.uid;
+      // Signed-in users may only bump the reply counter; authors may edit/delete.
+      allow update: if request.auth != null
+        && (resource.data.authorId == request.auth.uid
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answerCount']));
+      allow delete: if request.auth != null && resource.data.authorId == request.auth.uid;
+
+      match /replies/{replyId} {
+        allow read: if true;
+        allow create: if request.auth != null
+          && request.resource.data.authorId == request.auth.uid;
+        allow update, delete: if request.auth != null
+          && resource.data.authorId == request.auth.uid;
+      }
+    }
+  }
+}
