@@ -1,44 +1,58 @@
 # LKF Group Task Board
 
-An Expo React Native prototype for shared group tasks.
+An Expo React Native app where signed-in group members add tasks, see whether
+they or another member created each task, and mark tasks complete. The board
+and its counts update for every signed-in member as changes are saved.
 
 ## Run locally
 
 Use Node.js compatible with Expo SDK 57 (22.13 or newer).
 
 ```sh
-npm install
-cp .env.example .env
+npm ci
 npm start
 ```
 
-Fill all six `EXPO_PUBLIC_FIREBASE_*` entries in `.env` with the web configuration
-for the group's `si669-lkf-week7` Firebase project. Restart Expo after changing
-environment values. Keep `.env` local; `.env.example` documents the variable names.
-Client configuration is visible in the app; Firebase rules control database access.
+Create a `.env` file in the app root and fill these values from the web app
+configuration in the group's `si669-lkf-week7` Firebase project:
+
+```text
+EXPO_PUBLIC_FIREBASE_API_KEY=
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+EXPO_PUBLIC_FIREBASE_APP_ID=
+```
+
+Restart Expo after changing `.env`. The file is ignored by Git. Firebase client
+configuration is visible in the app; Firestore rules control database access.
+If values are missing, the app shows a setup message.
 
 Enable Email/Password under Firebase Authentication. Create the default Firestore
 database. Press `w` in the Expo terminal for a browser preview. A physical phone's
 Expo Go must support the project's SDK version.
 
-## Authentication
+## Firebase Authentication
 
 `firebase/config.js` exports `app`, `auth`, and `db`. `firebase/authService.js`
-provides signup, signin, signout, and the authentication observer.
-`components/AuthGate.js` displays loading and error states, shows the board after
-signin, clears the password after successful actions, and cleans up the observer.
+uses Email/Password Authentication to create accounts, sign members in and out,
+and observe sign-in state. `components/AuthGate.js` shows the board only to a
+signed-in member and displays authentication errors.
 
-## Database and realtime updates
+## Firestore database
 
 Tasks are saved in the `tasks` collection, with `title` (string), `completed`
-(boolean), `authorId` (UID), and `createdAt` (server timestamp).
-`firebase/taskService.js` creates tasks and updates their completion status.
-`firebase/realtimeService.js` provides `subscribeToTasks(onTasks, onError)`,
-preserves Firestore IDs, sorts by creation time, and returns listener cleanup.
-`components/TaskBoard.js` subscribes after signin and updates the list and counts
-from snapshots, including changes from other clients. Signout unmounts the board,
-stops the listener, and clears its task state. Failed writes preserve the draft;
-loading, empty, error, and retry states are shown in the board.
+(boolean), `authorId` (the creator's Firebase UID), and `createdAt` (server
+timestamp). `firebase/taskService.js` creates tasks and changes their completion
+status. Signed-in members share one board.
+
+## Realtime updates
+
+`firebase/realtimeService.js` listens to the Firestore `tasks` collection with
+`onSnapshot`, ordered by creation time. After sign-in, `components/TaskBoard.js`
+subscribes to that listener and redraws the tasks and counts when anyone adds or
+completes a task. Members do not need to refresh. The listener stops on sign-out.
 
 All task documents must include `createdAt` to appear in the ordered query.
 

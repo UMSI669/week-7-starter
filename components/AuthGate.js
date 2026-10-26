@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { observeAuthState, signIn, signOutCurrentUser, signUp } from '../firebase/authService';
+import { firebaseConfigError } from '../firebase/config';
 
 function friendlyError(error) {
   switch (error.code) {
@@ -25,13 +26,16 @@ export default function AuthGate({ children }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => observeAuthState(nextUser => {
-    setUser(nextUser);
-    setReady(true);
-  }, authError => {
-    setError(friendlyError(authError));
-    setReady(true);
-  }), []);
+  useEffect(() => {
+    if (firebaseConfigError) return;
+    return observeAuthState(nextUser => {
+      setUser(nextUser);
+      setReady(true);
+    }, authError => {
+      setError(friendlyError(authError));
+      setReady(true);
+    });
+  }, []);
 
   async function runAuth(operation) {
     setBusy(true);
@@ -44,6 +48,10 @@ export default function AuthGate({ children }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (firebaseConfigError) {
+    return <View style={styles.panel}><Text style={styles.heading}>Firebase setup needed</Text><Text accessibilityRole="alert" style={styles.error}>{firebaseConfigError}</Text></View>;
   }
 
   if (!ready) {
