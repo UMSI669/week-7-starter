@@ -1,0 +1,25 @@
+// PART 8 — SECURITY RULES
+// WHY: Hiding a button is a UI restriction, not authorization. Firebase
+// evaluates these intentionally minimal rules; client config is not the boundary.
+// PRODUCT QUESTION: Which actions should a participant be allowed to take?
+// DO: Read the active rules below and trace who can read, create, or delete.
+// CODE TO REVIEW: The rules block below is the policy Firebase will evaluate.
+// VERIFY: Publish the rules, then compare a signed-in request with a signed-out one.
+// NEXT: Search for "Security conversation" in README.md.
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /messages/{messageId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0;
+
+      allow delete: if request.auth != null
+                    && resource.data.authorId == request.auth.uid;
+    }
+  }
+}

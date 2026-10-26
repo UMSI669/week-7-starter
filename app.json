@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Firebase Tour",
+    "slug": "firebase-tour",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#f4f6fb"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {},
+    "web": {}
+  }
+}
