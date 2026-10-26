@@ -1,0 +1,19 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /messages/{messageId} {
+      // Only signed-in users can read the chat.
+      allow read: if request.auth != null;
+
+      // Only signed-in users can post, and only as themselves.
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0;
+
+      // Messages cannot be edited or deleted once sent.
+      allow update, delete: if false;
+    }
+  }
+}
