@@ -36,9 +36,17 @@ yarn-error.*
 
 # Keep the example configuration tracked
 !.env.example
+!.env.emulator
 
 # typescript
 *.tsbuildinfo
+
+# Test and Firebase generated files
+coverage/
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
 
 # generated native folders
 /ios
