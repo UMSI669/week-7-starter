@@ -13,6 +13,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import ArrowRightIcon from './assets/icons/arrow-right.svg';
+import AsteriskIcon from './assets/icons/asterisk.svg';
+import EyeOffIcon from './assets/icons/eye-off.svg';
+import LockKeyholeIcon from './assets/icons/lock-keyhole.svg';
+import XIcon from './assets/icons/x.svg';
 import { observeAuthState, signIn, signOutCurrentUser, signUp } from './firebase/authService';
 import { createThread, subscribeToThreads } from './firebase/threadService';
 
@@ -45,55 +50,165 @@ function formatPostDate(value) {
   return `${day}, ${time}`;
 }
 
+function EmailInput({ email, setEmail, placeholder }) {
+  return (
+    <View>
+      <Text style={styles.fieldLabel}>Email</Text>
+      <TextInput
+        accessibilityLabel="Email"
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        onChangeText={setEmail}
+        placeholder={placeholder}
+        placeholderTextColor={colors.muted}
+        style={[styles.input, styles.authInput]}
+        value={email}
+      />
+    </View>
+  );
+}
+
+function PasswordInput({ password, setPassword, placeholder }) {
+  const [visible, setVisible] = React.useState(false);
+
+  return (
+    <View>
+      <Text style={styles.fieldLabel}>Password</Text>
+      <View style={[styles.input, styles.authInput, styles.passwordInput]}>
+        <TextInput
+          accessibilityLabel="Password"
+          autoCapitalize="none"
+          onChangeText={setPassword}
+          placeholder={placeholder}
+          placeholderTextColor={colors.muted}
+          secureTextEntry={!visible}
+          style={styles.passwordText}
+          value={password}
+        />
+        <Pressable
+          accessibilityLabel={visible ? 'Hide password' : 'Show password'}
+          accessibilityRole="button"
+          hitSlop={12}
+          onPress={() => setVisible(isVisible => !isVisible)}
+        >
+          <EyeOffIcon height={18} width={18} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 function AuthScreen({
   authError,
-  authReady,
   authBusy,
   email,
   password,
   setEmail,
   setPassword,
-  runAuthOperation,
+  onLogin,
+  onOpenSignUp,
 }) {
+  const disabled = authBusy || !email.trim() || !password;
+
   return (
-    <View style={styles.authContent}>
-      <Text style={styles.authEyebrow}>A SMALL FIREBASE CODE TOUR</Text>
-      <Text style={styles.authHeading}>Firebase tour</Text>
-      <Text style={styles.authCopy}>A shared message board. As you work through the parts below, this static screen will become a realtime app.</Text>
-      <View style={styles.authPanel}>
-        <Text style={styles.authSubheading}>Join the conversation</Text>
-        <TextInput
-          accessibilityLabel="Email"
-          autoCapitalize="none"
-          autoComplete="email"
-          onChangeText={setEmail}
-          placeholder="Email"
-          style={styles.authInput}
-          value={email}
-        />
-        <TextInput
-          accessibilityLabel="Password"
-          autoCapitalize="none"
-          onChangeText={setPassword}
-          placeholder="Password"
-          secureTextEntry
-          style={styles.authInput}
-          value={password}
-        />
-        {authError ? <Text accessibilityRole="alert" style={styles.authError}>{authError}</Text> : null}
-        <View style={styles.authButtonRow}>
-          <Pressable accessibilityRole="button" disabled={authBusy} onPress={() => runAuthOperation(signUp)} style={styles.authPrimary}>
-            <Text style={styles.authPrimaryText}>{authBusy ? 'Please wait…' : 'Create account'}</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" disabled={authBusy} onPress={() => runAuthOperation(signIn)} style={styles.authSecondary}>
-            <Text style={styles.authSecondaryText}>Sign in</Text>
-          </Pressable>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.authScreen}>
+      <ScrollView contentContainerStyle={styles.authContent} keyboardShouldPersistTaps="handled">
+        <Brand />
+        <View style={styles.authWelcome}>
+          <Text style={styles.authEyebrow}>A LITTLE MORE HUMAN.</Text>
+          <Text style={styles.authHeading}>Share your idea!</Text>
         </View>
-        <Text style={styles.authMuted}>
-          {!authReady ? 'Auth observer not enabled yet. Complete Part 2.' : 'You are signed out.'}
-        </Text>
-      </View>
-    </View>
+        <View style={styles.authForm}>
+          <EmailInput email={email} placeholder="you@example.com" setEmail={setEmail} />
+          <PasswordInput password={password} placeholder="Enter your password" setPassword={setPassword} />
+          {authError ? <Text accessibilityRole="alert" style={styles.error}>{authError}</Text> : null}
+          <View style={styles.authActions}>
+            <Pressable
+              accessibilityLabel="Login"
+              accessibilityRole="button"
+              disabled={disabled}
+              onPress={onLogin}
+              style={[styles.loginButton, disabled && styles.disabled]}
+            >
+              <Text style={styles.loginButtonText}>{authBusy ? 'Logging in…' : 'Login'}</Text>
+              <ArrowRightIcon height={26} width={26} />
+            </Pressable>
+            <View style={styles.signUpRow}>
+              <Text style={styles.signUpPrompt}>New here?</Text>
+              <Pressable accessibilityRole="button" hitSlop={12} onPress={onOpenSignUp}>
+                <Text style={styles.signUpLink}>Sign up</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+function SignUpDialog({
+  visible,
+  onClose,
+  authError,
+  authBusy,
+  email,
+  password,
+  setEmail,
+  setPassword,
+  onCreateAccount,
+}) {
+  const disabled = authBusy || !email.trim() || password.length < 8;
+
+  return (
+    <Modal animationType="fade" onRequestClose={onClose} transparent visible={visible}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.modalBackdrop}
+      >
+        <Pressable accessibilityLabel="Close create account" onPress={onClose} style={StyleSheet.absoluteFill} />
+        <ScrollView
+          contentContainerStyle={styles.modalScrollContent}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          style={styles.modalScrollView}
+        >
+          <View style={styles.composer}>
+            <View style={styles.composerTopRow}>
+              <Text style={styles.eyebrow}>Create account</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.closeButton}>
+                <XIcon height={17} width={17} />
+              </Pressable>
+            </View>
+            <Text style={styles.composerHeading}>Join the conversation.</Text>
+
+            <View style={styles.signUpForm}>
+              <EmailInput email={email} placeholder="you@example.com" setEmail={setEmail} />
+              <View>
+                <PasswordInput password={password} placeholder="Create a password" setPassword={setPassword} />
+                <Text style={styles.passwordHint}>Use at least 8 characters.</Text>
+              </View>
+            </View>
+
+            {authError ? <Text accessibilityRole="alert" style={styles.error}>{authError}</Text> : null}
+            <Pressable
+              accessibilityRole="button"
+              disabled={disabled}
+              onPress={onCreateAccount}
+              style={[styles.publishButton, disabled && styles.disabled]}
+            >
+              <Text style={[styles.publishButtonText, styles.signUpButtonText]}>
+                {authBusy ? 'Creating account…' : 'Create account'}
+              </Text>
+            </Pressable>
+            <View style={styles.privacyNote}>
+              <LockKeyholeIcon height={13} width={13} />
+              <Text style={styles.privacyText}>Your email stays with our community.</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
@@ -101,9 +216,7 @@ function Brand() {
   return (
     <View style={styles.brand}>
       <View style={styles.brandMark}>
-        <View style={[styles.logoRay, styles.logoRayOne]} />
-        <View style={[styles.logoRay, styles.logoRayTwo]} />
-        <View style={[styles.logoRay, styles.logoRayThree]} />
+        <AsteriskIcon height={20} width={20} />
       </View>
       <Text style={styles.brandName}>commonplace</Text>
     </View>
@@ -223,6 +336,7 @@ export default function App() {
   const [posting, setPosting] = React.useState(false);
   const [composerError, setComposerError] = React.useState('');
   const [profileMenuOpen, setProfileMenuOpen] = React.useState(false);
+  const [signUpVisible, setSignUpVisible] = React.useState(false);
 
   React.useEffect(() => observeAuthState(nextUser => {
     setUser(nextUser);
@@ -285,20 +399,48 @@ export default function App() {
     setComposerVisible(true);
   }
 
+  function openSignUp() {
+    setAuthError('');
+    setSignUpVisible(true);
+  }
+
+  function closeSignUp() {
+    setAuthError('');
+    setSignUpVisible(false);
+  }
+
+  async function createAccount() {
+    const created = await runAuthOperation(signUp);
+    if (created) setSignUpVisible(false);
+  }
+
   if (!user) {
     return (
       <SafeAreaProvider>
         <SafeAreaView style={styles.safeArea}>
           <StatusBar barStyle="dark-content" />
-          <AuthScreen
+          {authReady ? (
+            <AuthScreen
+              authError={signUpVisible ? '' : authError}
+              authBusy={authBusy}
+              email={email}
+              password={password}
+              setEmail={setEmail}
+              setPassword={setPassword}
+              onLogin={() => runAuthOperation(signIn)}
+              onOpenSignUp={openSignUp}
+            />
+          ) : null}
+          <SignUpDialog
+            visible={signUpVisible}
+            onClose={closeSignUp}
             authError={authError}
-            authReady={authReady}
             authBusy={authBusy}
             email={email}
             password={password}
             setEmail={setEmail}
             setPassword={setPassword}
-            runAuthOperation={runAuthOperation}
+            onCreateAccount={createAccount}
           />
         </SafeAreaView>
       </SafeAreaProvider>
@@ -394,13 +536,14 @@ export default function App() {
   );
 }
 
+// Values from the commonplace Figma file.
 const colors = {
-  background: '#f7f7f3',
-  paper: '#fffefa',
-  ink: '#232824',
-  muted: '#7b817c',
-  line: '#d9ddd6',
-  blue: '#3154d1',
+  background: '#f7f6f2',
+  paper: '#fffefb',
+  ink: '#20231f',
+  muted: '#72766f',
+  line: '#dddfd7',
+  blue: '#3155ce',
   avatar: '#e8edf9',
 };
 
@@ -412,11 +555,7 @@ const styles = StyleSheet.create({
   threadListContent: { paddingHorizontal: 28, paddingBottom: 108 },
   topBar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', overflow: 'visible', paddingTop: 20, paddingBottom: 27, position: 'relative', zIndex: 3 },
   brand: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  brandMark: { alignItems: 'center', backgroundColor: colors.blue, borderRadius: 7, height: 26, justifyContent: 'center', overflow: 'hidden', width: 26 },
-  logoRay: { backgroundColor: '#fff', borderRadius: 1, height: 12, position: 'absolute', width: 2 },
-  logoRayOne: { transform: [{ rotate: '0deg' }] },
-  logoRayTwo: { transform: [{ rotate: '60deg' }] },
-  logoRayThree: { transform: [{ rotate: '120deg' }] },
+  brandMark: { alignItems: 'center', backgroundColor: colors.blue, borderRadius: 8, height: 26, justifyContent: 'center', overflow: 'hidden', width: 26 },
   brandName: { color: colors.ink, fontSize: 19, letterSpacing: 0.1 },
   profileMenuAnchor: { alignItems: 'flex-end', overflow: 'visible', position: 'relative', zIndex: 4 },
   profileAvatar: { alignItems: 'center', backgroundColor: colors.avatar, borderRadius: 25, height: 50, justifyContent: 'center', width: 50 },
@@ -454,7 +593,7 @@ const styles = StyleSheet.create({
   composer: { alignSelf: 'center', backgroundColor: colors.background, borderRadius: 23, flexShrink: 1, maxWidth: 480, padding: 24, width: '100%' },
   composerTopRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   eyebrow: { color: colors.blue, fontSize: 10, fontWeight: '500' },
-  closeButton: { alignItems: 'center', backgroundColor: '#eff0eb', borderRadius: 16, height: 30, justifyContent: 'center', width: 30 },
+  closeButton: { alignItems: 'center', backgroundColor: '#eeefe8', borderRadius: 16, height: 30, justifyContent: 'center', width: 30 },
   closeText: { color: colors.ink, fontSize: 22, fontWeight: '300', lineHeight: 24 },
   composerHeading: { color: colors.ink, fontSize: 30, fontWeight: '600', letterSpacing: -0.5, marginTop: 10 },
   composerIntro: { color: colors.muted, fontSize: 14, marginBottom: 22, marginTop: 8 },
@@ -472,18 +611,24 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.55 },
   error: { color: '#a32d32', fontSize: 12, marginBottom: 10 },
   muted: { color: colors.muted, fontSize: 13 },
-  authContent: { flex: 1, gap: 12, padding: 18, paddingTop: 24 },
-  authEyebrow: { color: colors.blue, fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
-  authHeading: { color: '#19233b', fontSize: 30, fontWeight: '800' },
-  authCopy: { color: '#5f6b83', fontSize: 14, lineHeight: 20 },
-  authPanel: { backgroundColor: '#fff', borderRadius: 12, gap: 9, padding: 13 },
-  authSubheading: { color: '#19233b', fontSize: 17, fontWeight: '700' },
-  authInput: { backgroundColor: '#fff', borderColor: '#dce2ee', borderRadius: 9, borderWidth: 1, minHeight: 42, paddingHorizontal: 12, paddingVertical: 9 },
-  authButtonRow: { flexDirection: 'row', gap: 8 },
-  authPrimary: { alignItems: 'center', backgroundColor: colors.blue, borderRadius: 9, paddingHorizontal: 14, paddingVertical: 11 },
-  authPrimaryText: { color: '#fff', fontWeight: '700' },
-  authSecondary: { alignItems: 'center', borderColor: colors.blue, borderRadius: 9, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10 },
-  authSecondaryText: { color: '#3448c0', fontWeight: '700' },
-  authError: { color: '#a32d32', fontSize: 13 },
-  authMuted: { color: '#5f6b83', fontSize: 12 },
+  authScreen: { flex: 1 },
+  authContent: { flexGrow: 1, gap: 24, paddingBottom: 24, paddingHorizontal: 28, paddingTop: 24 },
+  authWelcome: { gap: 18, paddingBottom: 32, paddingTop: 72 },
+  authEyebrow: { color: colors.blue, fontSize: 11 },
+  authHeading: { color: colors.ink, fontSize: 36, fontWeight: '600', lineHeight: 39 },
+  authForm: { gap: 20 },
+  authInput: { minHeight: 56, paddingHorizontal: 16 },
+  passwordInput: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingVertical: 0 },
+  passwordText: { color: colors.ink, flex: 1, fontSize: 15, minHeight: 54 },
+  authActions: { gap: 10, paddingTop: 10 },
+  loginButton: { alignItems: 'center', backgroundColor: colors.blue, borderRadius: 14, flexDirection: 'row', height: 72, justifyContent: 'space-between', paddingHorizontal: 24 },
+  loginButtonText: { color: '#fff', fontSize: 25, fontWeight: '600' },
+  signUpRow: { alignItems: 'center', flexDirection: 'row', gap: 8, height: 48, justifyContent: 'center' },
+  signUpPrompt: { color: colors.muted, fontSize: 14 },
+  signUpLink: { color: colors.blue, fontSize: 14 },
+  signUpForm: { gap: 18, marginBottom: 24, marginTop: 24 },
+  passwordHint: { color: colors.muted, fontSize: 12, marginTop: 8 },
+  signUpButtonText: { fontSize: 16 },
+  privacyNote: { alignItems: 'center', flexDirection: 'row', gap: 6, justifyContent: 'center', marginTop: 24 },
+  privacyText: { color: colors.muted, fontSize: 11 },
 });
