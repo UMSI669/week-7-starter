@@ -1,65 +1,97 @@
-# Firebase Tour: a realtime message board
+# commonplace
 
-A small Expo + React Native application for learning the Firebase ideas that matter when collaborating on prototypes: Authentication, Firestore documents, and realtime updates. The app has one screen and uses React state and effects-no Redux, navigation framework, backend proxy, or production architecture detour.
+A small community board built with Expo + React Native and Firebase. People create an account, sign in, and share short threads (a title and some text) in a shared feed, "The common room." New threads show up on every signed-in device as soon as they're posted, with no refresh.
 
+The UI follows the team's commonplace Figma file.
 
-## Student setup
-Fork this to a new repository
+## What the app does
 
-```sh
-git clone <your-fork-repository-url>
-cd firebase-tour
-npm install
-cp .env.example .env
-npm start
-```
+- **Log in or sign up.** The login screen takes an email and password. "Sign up" opens a create-account dialog (passwords need at least 8 characters). Both password fields have a show/hide toggle.
+- **Read the feed.** Once signed in, you see every thread, newest first, with the author's initials, email, and when it was posted.
+- **Start a thread.** The blue **+** button opens a composer. Add a title and content, then **Publish thread**.
+- **Log out.** Tap your initials in the top-right corner, then **Log out**.
 
-### Step 1: Create App
-In Firebase Console, create app - choose "web"
+## How it uses Firebase
 
-### Step 2: Enable Firebase Authentication
-To allow users to sign up and sign in:
-In the left-hand navigation menu of the Firebase console, expand Security and click Authentication.
-Click Get started.
-Under the Sign-in method tab, select Email/Password, toggle it to Enabled, and click Save.
-### Step 3: Enable Cloud Firestore
-To store your app's messages:
-In the left-hand navigation menu, under Databses and Storage, click Firestore.
-Click Create database.
-Select your database location and click Next.
-Choose Start in test mode for your initial setup (this lets you read and write immediately while you are developing), and click Create.
+All Firebase code lives in [`firebase/`](firebase/); [`App.js`](App.js) only calls those functions.
 
+### Authentication: who you are
 
-Copy `.env.example` to `.env` and paste their Firebase **web** configuration into `.env`. Expo substitutes `EXPO_PUBLIC_*` values into the client application. The local `.env` workflow helps avoid accidental repository commits; it does **not** make these client configuration values secret. The security boundary is Firebase Authentication together with Firebase Security Rules. Never put Admin SDK credentials, service-account JSON, or private keys in these variables. This course does not use a backend configuration proxy.
+[`firebase/authService.js`](firebase/authService.js) uses Firebase Authentication with email/password.
 
-## The tour
+| Action | Firebase call |
+|---|---|
+| Create account | `createUserWithEmailAndPassword` |
+| Log in | `signInWithEmailAndPassword` |
+| Log out | `signOut` |
+| Watch sign-in state | `onAuthStateChanged` |
 
-Complete **Parts 1–8 in order**. Search the repository for `PART 1`, `PART 2`, and so on. Most parts say exactly which import, return statement, or effect block to uncomment; you should not need to invent Firebase code. For a `/* ... */` block, remove the two comment markers as directed. Each part includes why the code matters, a product question, a verification, and the next destination. At the end of each part, run:
+`App.js` subscribes to `onAuthStateChanged` when it starts. Firebase tells the app whether someone is already signed in, and the app shows the login screen or the feed. The app never decides this itself, so signing in, signing up, or logging out all flow through that one listener.
 
-```sh
-npm run check-progress
-npm test
-```
+### Firestore: where threads are stored
 
-The progress checker parses active JavaScript with Babel rather than counting lesson comments. Its `--report-only` mode is for the starter branch's CI report. The normal checker exits nonzero when a lesson is incomplete and prints a concrete next step.
+[`firebase/threadService.js`](firebase/threadService.js) saves each thread as a document in the `threads` collection in Cloud Firestore:
 
-1. Configure and initialize Firebase from environment values.
-2. Observe the asynchronous Authentication state and show the right screen.
-3. Sign up, sign in, and sign out with email and password.
-4. Create a Firestore message associated with the current user's UID and email.
-5. Demonstrate a one-time read and preserve each document's Firestore ID.
-6. Replace the app's startup read with a realtime subscription.
-7. Clean up both Auth and Firestore subscriptions when effects end.
-8. Read the minimal Firestore Security Rules and discuss what the UI can-and cannot-protect.
+| Field | Value |
+|---|---|
+| `title` | Thread title (trimmed, required) |
+| `content` | Thread body (trimmed, required) |
+| `authorId` | The signed-in user's Firebase UID |
+| `authorEmail` | The signed-in user's email |
+| `createdAt` | `serverTimestamp()`, set by Firebase, not the phone's clock |
 
-The message document is intentionally flat: `text`, `authorId`, `authorEmail`, and `createdAt`. Firestore's document ID is included as `id` when data is mapped to the UI, and the query orders by newest first.
+`createThread` writes a new document with `addDoc`. Firestore generates the document ID, which the app uses as the list key.
 
+### Realtime updates: seeing new threads instantly
 
-## Testing
+`subscribeToThreads` uses Firestore's `onSnapshot` on the `threads` collection, ordered by `createdAt` newest first. Firestore sends the current list immediately and then again every time a thread is added, so when anyone publishes, every signed-in device updates on its own.
 
-Unit tests use mocked Firebase SDK functions or mocked service modules. They make no network calls, require no Firebase project or `.env`, and do not write to the live class Firebase project. Tests cover configuration's duplicate-initialization guard, auth UI and operations, message writes/reads, document IDs, realtime updates, and listener cleanup. `npm run test:infrastructure` checks starter setup independently from unfinished product features.
+The subscription starts when a user signs in and is unsubscribed when they log out or the app closes. The auth listener is cleaned up the same way.
 
-Real-device/manual verification is still needed to confirm cross-client realtime behavior against a configured Firebase project. Open the app on two clients signed into different accounts, send a message from one, and check that it appears on the other without refreshing.
+### Security rules
 
+[`firestore.rules`](firestore.rules) is where the data is actually protected. Hiding a button doesn't stop anyone.
 
-You must be able to identify the authentication observer, Firestore write, one-time read, realtime listener, and cleanup function in your completed code.
+- Only signed-in users can read threads.
+- Only signed-in users can create threads, and only as themselves: `authorId` must match their UID, `title` and `content` must be non-empty strings, and `createdAt` must be the server time.
+- Nobody can edit or delete threads.
+
+## Run it locally
+
+1. Install dependencies:
+   ```sh
+   npm install
+   ```
+2. Create a `.env` file in the project root with the Firebase **web** app config (Firebase Console → Project settings → General → Your apps):
+   ```sh
+   EXPO_PUBLIC_FIREBASE_API_KEY=
+   EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=
+   EXPO_PUBLIC_FIREBASE_PROJECT_ID=
+   EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=
+   EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+   EXPO_PUBLIC_FIREBASE_APP_ID=
+   ```
+   `.env` is git-ignored. These values identify the Firebase project but aren't secret; the security rules above are what protect the data. Never put Admin SDK or service-account credentials here.
+3. In the Firebase Console, make sure **Authentication → Email/Password** is enabled and a **Cloud Firestore** database exists. Publish `firestore.rules` to it.
+4. Start the app (`-c` clears Metro's cache, which is needed after changing `.env`):
+   ```sh
+   npx expo start -c --ios      # or --android, --web
+   ```
+
+### Try the realtime feed
+
+Open the app on two devices or simulators, signed in with different accounts. Publish a thread on one and watch it appear on the other without refreshing.
+
+## Project layout
+
+| Path | What's there |
+|---|---|
+| `App.js` | Every screen: login, create-account dialog, feed, thread composer |
+| `firebase/config.js` | Initializes Firebase from the `.env` values |
+| `firebase/authService.js` | Sign up, log in, log out, and the sign-in listener |
+| `firebase/threadService.js` | Create threads and subscribe to the live feed |
+| `firestore.rules` | Firestore security rules |
+| `assets/icons/` | SVG icons exported from Figma |
+| `metro.config.js` | Lets `App.js` import the `.svg` icons as components |
+
+`firebase/messageService.js` and the tests in `__tests__/` are left over from the class starter (a simple message board) and haven't been updated for threads yet.
